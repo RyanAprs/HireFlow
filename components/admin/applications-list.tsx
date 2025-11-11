@@ -278,7 +278,6 @@ export default function ApplicationsList() {
                 </div>
               </div>
 
-              {/* Form Data */}
               <div>
                 <h3 className="font-semibold mb-2">Application Responses</h3>
                 <div className="space-y-2">
