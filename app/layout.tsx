@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   description:
     "Modern hiring management platform for creating job postings and managing applications with ease",
   generator: "Next.js",
+  icons: {
+    icon: "/briefcase.svg",
+  },
 };
 
 export default function RootLayout({

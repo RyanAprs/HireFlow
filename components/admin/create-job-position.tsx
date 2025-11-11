@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,81 +11,122 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, X, ArrowUp, ArrowDown } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { useAuthStore } from "@/lib/store"
-import type { FormFieldType } from "@/lib/types"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, X, ArrowUp, ArrowDown } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/lib/store";
+import type { FormFieldType } from "@/lib/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type DynamicField = {
-  field_name: string
-  field_type: FormFieldType
-  field_label: string
-  field_options: string[]
-  is_required: boolean
-  field_order: number
-}
+  field_name: string;
+  field_type: FormFieldType;
+  field_label: string;
+  field_options: string[];
+  is_required: boolean;
+  field_order: number;
+};
 
 export default function CreateJobPosition() {
-  const [open, setOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [location, setLocation] = useState("")
-  const [employmentType, setEmploymentType] = useState("")
-  const [salaryRange, setSalaryRange] = useState("")
-  const [fields, setFields] = useState<DynamicField[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const profile = useAuthStore((state) => state.profile)
+  const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [employmentType, setEmploymentType] = useState("");
+  const [salaryRange, setSalaryRange] = useState("");
+  const [fields, setFields] = useState<DynamicField[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const profile = useAuthStore((state) => state.profile);
+
+  // Generate field_name from field_label
+  const generateFieldName = (label: string): string => {
+    return label
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "") // Remove special characters
+      .replace(/\s+/g, "_") // Replace spaces with underscore
+      .substring(0, 50); // Limit length
+  };
 
   const addField = () => {
     setFields([
       ...fields,
       {
-        field_name: `field_${fields.length + 1}`,
+        field_name: `field_${Date.now()}`, // Temporary name
         field_type: "text",
         field_label: "",
         field_options: [],
         is_required: false,
         field_order: fields.length,
       },
-    ])
-  }
+    ]);
+  };
 
   const removeField = (index: number) => {
-    setFields(fields.filter((_, i) => i !== index))
-  }
+    setFields(fields.filter((_, i) => i !== index));
+  };
 
   const updateField = (index: number, updates: Partial<DynamicField>) => {
-    setFields(fields.map((field, i) => (i === index ? { ...field, ...updates } : field)))
-  }
+    setFields(
+      fields.map((field, i) => {
+        if (i === index) {
+          const updatedField = { ...field, ...updates };
+
+          // Auto-generate field_name when field_label changes
+          if (updates.field_label !== undefined && updates.field_label !== "") {
+            updatedField.field_name = generateFieldName(updates.field_label);
+          }
+
+          return updatedField;
+        }
+        return field;
+      })
+    );
+  };
 
   const moveField = (index: number, direction: "up" | "down") => {
     if (direction === "up" && index > 0) {
-      const newFields = [...fields]
-      ;[newFields[index - 1], newFields[index]] = [newFields[index], newFields[index - 1]]
-      setFields(newFields.map((f, i) => ({ ...f, field_order: i })))
+      const newFields = [...fields];
+      [newFields[index - 1], newFields[index]] = [
+        newFields[index],
+        newFields[index - 1],
+      ];
+      setFields(newFields.map((f, i) => ({ ...f, field_order: i })));
     } else if (direction === "down" && index < fields.length - 1) {
-      const newFields = [...fields]
-      ;[newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]]
-      setFields(newFields.map((f, i) => ({ ...f, field_order: i })))
+      const newFields = [...fields];
+      [newFields[index], newFields[index + 1]] = [
+        newFields[index + 1],
+        newFields[index],
+      ];
+      setFields(newFields.map((f, i) => ({ ...f, field_order: i })));
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
 
-    const supabase = createClient()
+    const supabase = createClient();
 
     try {
+      // Validate fields have labels
+      const invalidFields = fields.filter((f) => !f.field_label.trim());
+      if (invalidFields.length > 0) {
+        throw new Error("All form fields must have a label");
+      }
+
       // Insert job position
       const { data: jobData, error: jobError } = await supabase
         .from("job_positions")
@@ -98,38 +139,45 @@ export default function CreateJobPosition() {
           created_by: profile?.id,
         })
         .select()
-        .single()
+        .single();
 
-      if (jobError) throw jobError
+      if (jobError) throw jobError;
 
-      // Insert form fields
+      // Insert form fields with generated field_names
       if (fields.length > 0) {
-        const { error: fieldsError } = await supabase.from("form_fields").insert(
-          fields.map((field) => ({
-            job_position_id: jobData.id,
-            ...field,
-            field_options: field.field_type === "select" ? field.field_options : null,
-          })),
-        )
+        const { error: fieldsError } = await supabase
+          .from("form_fields")
+          .insert(
+            fields.map((field) => ({
+              job_position_id: jobData.id,
+              field_name: field.field_name,
+              field_type: field.field_type,
+              field_label: field.field_label,
+              field_options:
+                field.field_type === "select" ? field.field_options : null,
+              is_required: field.is_required,
+              field_order: field.field_order,
+            }))
+          );
 
-        if (fieldsError) throw fieldsError
+        if (fieldsError) throw fieldsError;
       }
 
       // Reset form
-      setTitle("")
-      setDescription("")
-      setLocation("")
-      setEmploymentType("")
-      setSalaryRange("")
-      setFields([])
-      setOpen(false)
-      window.location.reload()
+      setTitle("");
+      setDescription("");
+      setLocation("");
+      setEmploymentType("");
+      setSalaryRange("");
+      setFields([]);
+      setOpen(false);
+      window.location.reload();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -142,7 +190,9 @@ export default function CreateJobPosition() {
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Job Position</DialogTitle>
-          <DialogDescription>Add a new job position with custom application fields</DialogDescription>
+          <DialogDescription>
+            Add a new job position with custom application fields
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -211,9 +261,14 @@ export default function CreateJobPosition() {
             </CardHeader>
             <CardContent className="space-y-4">
               {fields.map((field, index) => (
-                <div key={index} className="p-4 border rounded-lg space-y-3 bg-gray-50">
+                <div
+                  key={index}
+                  className="p-4 border rounded-lg space-y-3 bg-gray-50"
+                >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Field {index + 1}</span>
+                    <span className="text-sm font-medium">
+                      Field {index + 1}
+                    </span>
                     <div className="flex items-center gap-2">
                       <Button
                         type="button"
@@ -233,7 +288,12 @@ export default function CreateJobPosition() {
                       >
                         <ArrowDown className="h-4 w-4" />
                       </Button>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeField(index)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeField(index)}
+                      >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -241,19 +301,30 @@ export default function CreateJobPosition() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>Field Label</Label>
+                      <Label>Field Label *</Label>
                       <Input
                         value={field.field_label}
-                        onChange={(e) => updateField(index, { field_label: e.target.value })}
+                        onChange={(e) =>
+                          updateField(index, { field_label: e.target.value })
+                        }
                         placeholder="e.g., Years of Experience"
                       />
+                      {field.field_label && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Field name: {field.field_name}
+                        </p>
+                      )}
                     </div>
 
                     <div>
                       <Label>Field Type</Label>
                       <Select
                         value={field.field_type}
-                        onValueChange={(value) => updateField(index, { field_type: value as FormFieldType })}
+                        onValueChange={(value) =>
+                          updateField(index, {
+                            field_type: value as FormFieldType,
+                          })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -279,7 +350,9 @@ export default function CreateJobPosition() {
                         value={field.field_options.join(", ")}
                         onChange={(e) =>
                           updateField(index, {
-                            field_options: e.target.value.split(",").map((o) => o.trim()),
+                            field_options: e.target.value
+                              .split(",")
+                              .map((o) => o.trim()),
                           })
                         }
                         placeholder="Option 1, Option 2, Option 3"
@@ -291,16 +364,26 @@ export default function CreateJobPosition() {
                     <Checkbox
                       id={`required-${index}`}
                       checked={field.is_required}
-                      onCheckedChange={(checked) => updateField(index, { is_required: checked as boolean })}
+                      onCheckedChange={(checked) =>
+                        updateField(index, { is_required: checked as boolean })
+                      }
                     />
-                    <Label htmlFor={`required-${index}`} className="font-normal cursor-pointer">
+                    <Label
+                      htmlFor={`required-${index}`}
+                      className="font-normal cursor-pointer"
+                    >
                       Required field
                     </Label>
                   </div>
                 </div>
               ))}
 
-              <Button type="button" variant="outline" onClick={addField} className="w-full bg-transparent">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addField}
+                className="w-full bg-transparent"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Form Field
               </Button>
@@ -310,7 +393,11 @@ export default function CreateJobPosition() {
           {error && <p className="text-sm text-red-500">{error}</p>}
 
           <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
@@ -320,5 +407,5 @@ export default function CreateJobPosition() {
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
