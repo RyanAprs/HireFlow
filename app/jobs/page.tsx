@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import JobsList from "@/components/jobs/jobs-list";
-import HeaderWithLogout from "@/components/jobs/headerwithlogout";
+import { Button } from "@/components/ui/button";
+import { Briefcase, User, LogOut } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import HeaderWithLogout from "@/components/jobs/headerwithlogout";
 
 export default async function JobsPage() {
   const supabase = await createClient();
@@ -18,6 +21,7 @@ export default async function JobsPage() {
       .single();
     profile = data;
 
+    // Redirect admin to admin dashboard
     if (profile?.role === "admin") {
       redirect("/admin");
     }
@@ -25,8 +29,10 @@ export default async function JobsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <HeaderWithLogout user={user} />
 
+      {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Browse Job Opportunities</h1>
