@@ -104,13 +104,12 @@ hiring-management-app/
 ## 📸 Screenshots
 
 **Admin Dashboard**
-![Admin Dashboard](https://via.placeholder.com/800x400?text=Admin+Dashboard)
-
-**Job Application Form**
-![Job Application](https://via.placeholder.com/800x400?text=Application+Form)
+<img width="946" height="465" alt="image" src="https://github.com/user-attachments/assets/141827c2-eb0d-46ed-8cdb-862f353fbbba" />
 
 **Applicant Dashboard**
-![Applicant Dashboard](https://via.placeholder.com/800x400?text=Applicant+Dashboard)
+
+<img width="801" height="415" alt="image" src="https://github.com/user-attachments/assets/fc0f9646-6a17-4bb0-84f6-3b585032c63d" />
+
 
 ---
 
