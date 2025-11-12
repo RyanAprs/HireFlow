@@ -103,13 +103,14 @@ hiring-management-app/
 
 ## 📸 Screenshots
 
-**Admin Dashboard**
-<img width="946" height="465" alt="image" src="https://github.com/user-attachments/assets/141827c2-eb0d-46ed-8cdb-862f353fbbba" />
+**Admin Job List Page**
+<img width="953" height="479" alt="image" src="https://github.com/user-attachments/assets/5904a6b7-2ca1-4dee-ad8a-2e6019e881dd" />
 
-**Applicant Dashboard**
+**Admin Candidate List Page**
+<img width="951" height="482" alt="image" src="https://github.com/user-attachments/assets/8fc65d24-dde4-4ffa-bcd4-7818655224d6" />
 
-<img width="801" height="415" alt="image" src="https://github.com/user-attachments/assets/fc0f9646-6a17-4bb0-84f6-3b585032c63d" />
-
+**Applicant Job List Page**
+<img width="952" height="478" alt="image" src="https://github.com/user-attachments/assets/15719ba4-fea7-45b1-aa33-af0d6b4b9506" />
 
 ---
 
