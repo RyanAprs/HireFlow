@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +27,8 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "../ui/badge";
 
 type DynamicField = {
   field_name: string;
@@ -38,6 +39,42 @@ type DynamicField = {
   field_order: number;
 };
 
+// Minimum required fields that will always be present
+const REQUIRED_FIELDS: DynamicField[] = [
+  {
+    field_name: "full_name",
+    field_type: "text",
+    field_label: "Full Name",
+    field_options: [],
+    is_required: true,
+    field_order: 0,
+  },
+  {
+    field_name: "email",
+    field_type: "email",
+    field_label: "Email",
+    field_options: [],
+    is_required: true,
+    field_order: 1,
+  },
+  {
+    field_name: "linkedin",
+    field_type: "text",
+    field_label: "LinkedIn Profile",
+    field_options: [],
+    is_required: true,
+    field_order: 2,
+  },
+  {
+    field_name: "domicile",
+    field_type: "text",
+    field_label: "Domicile",
+    field_options: [],
+    is_required: true,
+    field_order: 3,
+  },
+];
+
 export default function CreateJobPosition() {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +83,7 @@ export default function CreateJobPosition() {
   const [location, setLocation] = useState("");
   const [employmentType, setEmploymentType] = useState("");
   const [salaryRange, setSalaryRange] = useState("");
-  const [fields, setFields] = useState<DynamicField[]>([]);
+  const [additionalFields, setAdditionalFields] = useState<DynamicField[]>([]);
   const [error, setError] = useState<string | null>(null);
   const profile = useAuthStore((state) => state.profile);
 
@@ -54,36 +91,36 @@ export default function CreateJobPosition() {
   const generateFieldName = (label: string): string => {
     return label
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "") // Remove special characters
-      .replace(/\s+/g, "_") // Replace spaces with underscore
-      .substring(0, 50); // Limit length
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, "_")
+      .substring(0, 50);
   };
 
   const addField = () => {
-    setFields([
-      ...fields,
+    const newOrder = REQUIRED_FIELDS.length + additionalFields.length;
+    setAdditionalFields([
+      ...additionalFields,
       {
-        field_name: `field_${Date.now()}`, // Temporary name
+        field_name: `field_${Date.now()}`,
         field_type: "text",
         field_label: "",
         field_options: [],
         is_required: false,
-        field_order: fields.length,
+        field_order: newOrder,
       },
     ]);
   };
 
   const removeField = (index: number) => {
-    setFields(fields.filter((_, i) => i !== index));
+    setAdditionalFields(additionalFields.filter((_, i) => i !== index));
   };
 
   const updateField = (index: number, updates: Partial<DynamicField>) => {
-    setFields(
-      fields.map((field, i) => {
+    setAdditionalFields(
+      additionalFields.map((field, i) => {
         if (i === index) {
           const updatedField = { ...field, ...updates };
 
-          // Auto-generate field_name when field_label changes
           if (updates.field_label !== undefined && updates.field_label !== "") {
             updatedField.field_name = generateFieldName(updates.field_label);
           }
@@ -97,37 +134,46 @@ export default function CreateJobPosition() {
 
   const moveField = (index: number, direction: "up" | "down") => {
     if (direction === "up" && index > 0) {
-      const newFields = [...fields];
+      const newFields = [...additionalFields];
       [newFields[index - 1], newFields[index]] = [
         newFields[index],
         newFields[index - 1],
       ];
-      setFields(newFields.map((f, i) => ({ ...f, field_order: i })));
-    } else if (direction === "down" && index < fields.length - 1) {
-      const newFields = [...fields];
+      setAdditionalFields(
+        newFields.map((f, i) => ({
+          ...f,
+          field_order: REQUIRED_FIELDS.length + i,
+        }))
+      );
+    } else if (direction === "down" && index < additionalFields.length - 1) {
+      const newFields = [...additionalFields];
       [newFields[index], newFields[index + 1]] = [
         newFields[index + 1],
         newFields[index],
       ];
-      setFields(newFields.map((f, i) => ({ ...f, field_order: i })));
+      setAdditionalFields(
+        newFields.map((f, i) => ({
+          ...f,
+          field_order: REQUIRED_FIELDS.length + i,
+        }))
+      );
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setIsLoading(true);
     setError(null);
 
     const supabase = createClient();
 
     try {
-      // Validate fields have labels
-      const invalidFields = fields.filter((f) => !f.field_label.trim());
+      const invalidFields = additionalFields.filter(
+        (f) => !f.field_label.trim()
+      );
       if (invalidFields.length > 0) {
-        throw new Error("All form fields must have a label");
+        throw new Error("All additional form fields must have a label");
       }
 
-      // Insert job position
       const { data: jobData, error: jobError } = await supabase
         .from("job_positions")
         .insert({
@@ -143,25 +189,28 @@ export default function CreateJobPosition() {
 
       if (jobError) throw jobError;
 
-      // Insert form fields with generated field_names
-      if (fields.length > 0) {
-        const { error: fieldsError } = await supabase
-          .from("form_fields")
-          .insert(
-            fields.map((field) => ({
-              job_position_id: jobData.id,
-              field_name: field.field_name,
-              field_type: field.field_type,
-              field_label: field.field_label,
-              field_options:
-                field.field_type === "select" ? field.field_options : null,
-              is_required: field.is_required,
-              field_order: field.field_order,
-            }))
-          );
+      const allFields = [
+        ...REQUIRED_FIELDS.map((f, i) => ({ ...f, field_order: i })),
+        ...additionalFields.map((f, i) => ({
+          ...f,
+          field_order: REQUIRED_FIELDS.length + i,
+        })),
+      ];
 
-        if (fieldsError) throw fieldsError;
-      }
+      const { error: fieldsError } = await supabase.from("form_fields").insert(
+        allFields.map((field) => ({
+          job_position_id: jobData.id,
+          field_name: field.field_name,
+          field_type: field.field_type,
+          field_label: field.field_label,
+          field_options:
+            field.field_type === "select" ? field.field_options : null,
+          is_required: field.is_required,
+          field_order: field.field_order,
+        }))
+      );
+
+      if (fieldsError) throw fieldsError;
 
       // Reset form
       setTitle("");
@@ -169,7 +218,7 @@ export default function CreateJobPosition() {
       setLocation("");
       setEmploymentType("");
       setSalaryRange("");
-      setFields([]);
+      setAdditionalFields([]);
       setOpen(false);
       window.location.reload();
     } catch (err: unknown) {
@@ -195,8 +244,8 @@ export default function CreateJobPosition() {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Info */}
+        <div className="space-y-6">
+          {/* Basic Job Info */}
           <div className="space-y-4">
             <div>
               <Label htmlFor="title">Job Title *</Label>
@@ -254,157 +303,211 @@ export default function CreateJobPosition() {
             </div>
           </div>
 
-          {/* Dynamic Fields Configuration */}
+          {/* Application Form Fields */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Application Form Fields</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {fields.map((field, index) => (
-                <div
-                  key={index}
-                  className="p-4 border rounded-lg space-y-3 bg-gray-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
-                      Field {index + 1}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => moveField(index, "up")}
-                        disabled={index === 0}
-                      >
-                        <ArrowUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => moveField(index, "down")}
-                        disabled={index === fields.length - 1}
-                      >
-                        <ArrowDown className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeField(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Field Label *</Label>
-                      <Input
-                        value={field.field_label}
-                        onChange={(e) =>
-                          updateField(index, { field_label: e.target.value })
-                        }
-                        placeholder="e.g., Years of Experience"
-                      />
-                      {field.field_label && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Field name: {field.field_name}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label>Field Type</Label>
-                      <Select
-                        value={field.field_type}
-                        onValueChange={(value) =>
-                          updateField(index, {
-                            field_type: value as FormFieldType,
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="text">Text</SelectItem>
-                          <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="tel">Phone</SelectItem>
-                          <SelectItem value="number">Number</SelectItem>
-                          <SelectItem value="date">Date</SelectItem>
-                          <SelectItem value="textarea">Text Area</SelectItem>
-                          <SelectItem value="select">Dropdown</SelectItem>
-                          <SelectItem value="file">File Upload</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {field.field_type === "select" && (
-                    <div>
-                      <Label>Options (comma-separated)</Label>
-                      <Input
-                        value={field.field_options.join(", ")}
-                        onChange={(e) =>
-                          updateField(index, {
-                            field_options: e.target.value
-                              .split(",")
-                              .map((o) => o.trim()),
-                          })
-                        }
-                        placeholder="Option 1, Option 2, Option 3"
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id={`required-${index}`}
-                      checked={field.is_required}
-                      onCheckedChange={(checked) =>
-                        updateField(index, { is_required: checked as boolean })
-                      }
-                    />
-                    <Label
-                      htmlFor={`required-${index}`}
-                      className="font-normal cursor-pointer"
+              {/* Required Fields - Read Only */}
+              <div>
+                <h4 className="text-sm font-semibold mb-3 text-gray-700">
+                  Required Fields (Default)
+                </h4>
+                <div className="space-y-2">
+                  {REQUIRED_FIELDS.map((field, index) => (
+                    <div
+                      key={field.field_name}
+                      className="p-3 border rounded-lg bg-blue-50 border-blue-200"
                     >
-                      Required field
-                    </Label>
-                  </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-sm">
+                            {index + 1}. {field.field_label}
+                            <span className="text-red-500 ml-1">*</span>
+                          </div>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-100 text-blue-800"
+                        >
+                          Required
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addField}
-                className="w-full bg-transparent"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Form Field
-              </Button>
+              <Separator />
+
+              {/* Additional Fields - User Defined */}
+              <div>
+                <h4 className="text-sm font-semibold mb-3 text-gray-700">
+                  Additional Fields (Optional)
+                </h4>
+                {additionalFields.length > 0 ? (
+                  <div className="space-y-4">
+                    {additionalFields.map((field, index) => (
+                      <div
+                        key={index}
+                        className="p-4 border rounded-lg space-y-3 bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">
+                            Field {REQUIRED_FIELDS.length + index + 1}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => moveField(index, "up")}
+                              disabled={index === 0}
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => moveField(index, "down")}
+                              disabled={index === additionalFields.length - 1}
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeField(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label>Field Label *</Label>
+                            <Input
+                              value={field.field_label}
+                              onChange={(e) =>
+                                updateField(index, {
+                                  field_label: e.target.value,
+                                })
+                              }
+                              placeholder="e.g., Years of Experience"
+                            />
+                            {field.field_label && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Field name: {field.field_name}
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <Label>Field Type</Label>
+                            <Select
+                              value={field.field_type}
+                              onValueChange={(value) =>
+                                updateField(index, {
+                                  field_type: value as FormFieldType,
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="text">Text</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                                <SelectItem value="tel">Phone</SelectItem>
+                                <SelectItem value="number">Number</SelectItem>
+                                <SelectItem value="date">Date</SelectItem>
+                                <SelectItem value="textarea">
+                                  Text Area
+                                </SelectItem>
+                                <SelectItem value="select">Dropdown</SelectItem>
+                                <SelectItem value="file">
+                                  File Upload
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {field.field_type === "select" && (
+                          <div>
+                            <Label>Options (comma-separated)</Label>
+                            <Input
+                              value={field.field_options.join(", ")}
+                              onChange={(e) =>
+                                updateField(index, {
+                                  field_options: e.target.value
+                                    .split(",")
+                                    .map((o) => o.trim()),
+                                })
+                              }
+                              placeholder="Option 1, Option 2, Option 3"
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`required-${index}`}
+                            checked={field.is_required}
+                            onCheckedChange={(checked) =>
+                              updateField(index, {
+                                is_required: checked as boolean,
+                              })
+                            }
+                          />
+                          <Label
+                            htmlFor={`required-${index}`}
+                            className="font-normal cursor-pointer"
+                          >
+                            Required field
+                          </Label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No additional fields yet. Click below to add custom fields.
+                  </p>
+                )}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addField}
+                  className="w-full mt-4"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Custom Field
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button onClick={handleSubmit} disabled={isLoading}>
               {isLoading ? "Creating..." : "Create Job Position"}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

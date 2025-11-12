@@ -1,38 +1,44 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { Briefcase } from "lucide-react"
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Briefcase } from "lucide-react";
 
 export default function SignUpPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [repeatPassword, setRepeatPassword] = useState("")
-  const [fullName, setFullName] = useState("")
-  const [role, setRole] = useState<"admin" | "applicant">("applicant")
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState<"admin" | "applicant">("applicant");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const supabase = createClient()
-    setIsLoading(true)
-    setError(null)
+    e.preventDefault();
+    const supabase = createClient();
+    setIsLoading(true);
+    setError(null);
 
     if (password !== repeatPassword) {
-      setError("Passwords do not match")
-      setIsLoading(false)
-      return
+      setError("Passwords do not match");
+      setIsLoading(false);
+      return;
     }
 
     try {
@@ -40,21 +46,23 @@ export default function SignUpPage() {
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/login`,
+          emailRedirectTo:
+            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+            `${window.location.origin}/auth/login`,
           data: {
             full_name: fullName,
             role: role,
           },
         },
-      })
-      if (error) throw error
-      router.push("/auth/sign-up-success")
+      });
+      if (error) throw error;
+      router.push("/auth/login");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center p-6 md:p-10 bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -96,16 +104,25 @@ export default function SignUpPage() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="role">Account Type</Label>
-                    <RadioGroup value={role} onValueChange={(v) => setRole(v as "admin" | "applicant")}>
+                    <RadioGroup
+                      value={role}
+                      onValueChange={(v) => setRole(v as "admin" | "applicant")}
+                    >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="applicant" id="applicant" />
-                        <Label htmlFor="applicant" className="font-normal cursor-pointer">
+                        <Label
+                          htmlFor="applicant"
+                          className="font-normal cursor-pointer"
+                        >
                           Applicant (Job Seeker)
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="admin" id="admin" />
-                        <Label htmlFor="admin" className="font-normal cursor-pointer">
+                        <Label
+                          htmlFor="admin"
+                          className="font-normal cursor-pointer"
+                        >
                           Admin (Recruiter)
                         </Label>
                       </div>
@@ -138,7 +155,10 @@ export default function SignUpPage() {
                 </div>
                 <div className="mt-4 text-center text-sm">
                   Already have an account?{" "}
-                  <Link href="/auth/login" className="underline underline-offset-4">
+                  <Link
+                    href="/auth/login"
+                    className="underline underline-offset-4"
+                  >
                     Login
                   </Link>
                 </div>
@@ -148,5 +168,5 @@ export default function SignUpPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
